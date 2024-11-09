@@ -18,3 +18,6 @@ Recieves dataset, returns a pandas_df
 ### Forecasting.
 Receives pandas_df, returns final parquet/csv.
 
+#### useful comands & info:
+python 3.12.7
+pip freeze > requirements.txt
