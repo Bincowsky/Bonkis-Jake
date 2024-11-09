@@ -15,10 +15,9 @@ Recieves dataset, returns a pandas_df
 
 - Clustering (decomposition + elbow method)
 
-
 ### Forecasting.
 Receives pandas_df, returns final parquet/csv.
 
 
 State of the art review.
-Escalable options, include categorical data, trending things...
+Escalable options, include categorical data, trending things... 
