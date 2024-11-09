@@ -18,6 +18,3 @@ Recieves dataset, returns a pandas_df
 ### Forecasting.
 Receives pandas_df, returns final parquet/csv.
 
-
-State of the art review.
-Escalable options, include categorical data, trending things... 
