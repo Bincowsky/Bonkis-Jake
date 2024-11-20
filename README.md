@@ -1,4 +1,7 @@
-# Bonkis-Jake
+# Novartis Datathon
+Ramon and Adrià participated in the Novartis 2024 dathathon.
+
+During their preparation phase, they produced some code to solve the challenge for 2023, hoping that they can re-use it later.
 
 ## To do list --> Preparation phase.
 
@@ -18,6 +21,17 @@ Recieves dataset, returns a pandas_df
 ### Forecasting.
 Receives pandas_df, returns final parquet/csv.
 
-#### useful comands & info:
-python 3.12.7
+## Useful comands & info:
+We are running python 3.12.7 version.
+
+If you install a new library in your pip environment, remember to update the requirements file by running:
+
+```sh
 pip freeze > requirements.txt
+```
+
+If you want to install the libraries from the `requirements.txt` file:
+
+```sh
+pip install -r requirements.txt
+```
