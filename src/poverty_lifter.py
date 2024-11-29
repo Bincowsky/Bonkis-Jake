@@ -10,7 +10,6 @@ from sklearn.impute import SimpleImputer
 import xgboost as xgb
 from sklearn.metrics import mean_squared_error, make_scorer
 from sklearn.preprocessing import FunctionTransformer
-from sklearn.multioutput import MultiOutputRegressor
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import MultiLabelBinarizer
 import matplotlib.pyplot as plt
@@ -102,7 +101,34 @@ y_test = test_data['target']
 # Save cluster_nl and date for metric computation
 metric_df = test_data[['cluster_nl', 'date', 'target']].copy()
 
-# Define custom transformer for target encoding
+# Define columns
+numeric_features = [
+    'che_pc_usd', 'che_perc_gdp', 'insurance_perc_che', 'population', 'prev_perc', 
+    'price_month', 'price_unit', 'public_perc_che', 'months_since_launch', 
+    'months_since_ind_launch', 'market_size', 'affordability_index', 
+    'price_insurance_interaction', 'month_sin', 'month_cos'
+]
+
+categorical_features_low = ['corporation', 'country', 'therapeutic_area']
+categorical_features_high = ['brand', 'drug_id']
+
+# Process 'indication' with MultiLabelBinarizer
+class IndicationTransformer(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        self.mlb = MultiLabelBinarizer(sparse_output=False)
+        
+    def fit(self, X, y=None):
+        self.mlb.fit(X['indication'])
+        return self
+    
+    def transform(self, X):
+        indication_encoded = self.mlb.transform(X['indication'])
+        indication_df = pd.DataFrame(indication_encoded, columns=self.mlb.classes_, index=X.index)
+        X = X.join(indication_df)
+        X = X.drop(columns=['indication'])
+        return X
+
+# Define custom transformer for target encoding within ColumnTransformer
 class TargetEncodingTransformer(BaseEstimator, TransformerMixin):
     def __init__(self, cols=None):
         self.cols = cols
@@ -121,17 +147,6 @@ class TargetEncodingTransformer(BaseEstimator, TransformerMixin):
             X_transformed[col] = self.encoders[col].transform(X[col])
         return X_transformed
 
-# Define columns
-numeric_features = [
-    'che_pc_usd', 'che_perc_gdp', 'insurance_perc_che', 'population', 'prev_perc', 
-    'price_month', 'price_unit', 'public_perc_che', 'months_since_launch', 
-    'months_since_ind_launch', 'market_size', 'affordability_index', 
-    'price_insurance_interaction', 'month_sin', 'month_cos'
-]
-
-categorical_features_low = ['corporation', 'country', 'therapeutic_area']
-categorical_features_high = ['brand', 'drug_id']
-
 # Preprocessing pipelines
 numeric_transformer = Pipeline(steps=[
     ("imputer", SimpleImputer(strategy="median"))
@@ -139,36 +154,20 @@ numeric_transformer = Pipeline(steps=[
 
 categorical_transformer_low = Pipeline(steps=[
     ("imputer", SimpleImputer(strategy="most_frequent")),
-    ("onehot", OneHotEncoder(handle_unknown="ignore"))
+    ("onehot", OneHotEncoder(handle_unknown="ignore", sparse_output=False))
 ])
 
 categorical_transformer_high = Pipeline(steps=[
     ("imputer", SimpleImputer(strategy="most_frequent")),
-    ("target_encoder", TargetEncodingTransformer(cols=categorical_features_high))
+    ("target_encoder", TargetEncoder())
 ])
-
-# Process 'indication' with MultiLabelBinarizer
-class IndicationTransformer(BaseEstimator, TransformerMixin):
-    def __init__(self):
-        self.mlb = MultiLabelBinarizer(sparse_output=False)
-        
-    def fit(self, X, y=None):
-        self.mlb.fit(X['indication'])
-        return self
-    
-    def transform(self, X):
-        indication_encoded = self.mlb.transform(X['indication'])
-        indication_df = pd.DataFrame(indication_encoded, columns=self.mlb.classes_, index=X.index)
-        X = X.join(indication_df)
-        X = X.drop(columns=['indication'])
-        return X
 
 # Combine all preprocessing steps
 preprocessor = ColumnTransformer(
     transformers=[
         ("num", numeric_transformer, numeric_features),
         ("cat_low", categorical_transformer_low, categorical_features_low),
-        ("cat_high", 'passthrough', categorical_features_high)
+        ("cat_high", categorical_transformer_high, categorical_features_high)
     ]
 )
 
@@ -176,8 +175,8 @@ preprocessor = ColumnTransformer(
 pipeline = Pipeline(steps=[
     ("indication_transformer", IndicationTransformer()),
     ("preprocessor", preprocessor),
-    ("target_encoder", TargetEncodingTransformer(cols=categorical_features_high)),
-    ("scaler", StandardScaler()),
+    # Remove StandardScaler if not needed
+    # ("scaler", StandardScaler()),
     ("regressor", xgb.XGBRegressor(objective="reg:squarederror", random_state=42))
 ])
 
@@ -215,6 +214,7 @@ random_search = RandomizedSearchCV(
 
 # Fit the model
 random_search.fit(X_train, y_train)
+
 best_model = random_search.best_estimator_
 
 # Evaluate the model
@@ -231,6 +231,7 @@ mse, cyme = predict_and_measure_performance(best_model, X_test, y_test)
 
 # Feature Importance using SHAP
 xgb_regressor = best_model.named_steps["regressor"]
+
 # Prepare data for SHAP
 X_test_transformed = best_model.named_steps["preprocessor"].transform(X_test)
 explainer = shap.TreeExplainer(xgb_regressor)
@@ -242,10 +243,11 @@ shap.summary_plot(shap_values, X_test_transformed, feature_names=feature_names)
 
 # Prepare submission
 # Apply the same preprocessing to the submission data
-submission_df = submission_df.drop(columns=['target'], errors='ignore')
 submission_df = best_model.named_steps["indication_transformer"].transform(submission_df)
-submission_df = best_model.named_steps["target_encoder"].transform(submission_df)
 X_submission = submission_df.copy()
+
+# Align columns with training data
+X_submission = X_submission[X_train.columns]
 
 # Predict on submission data
 predictions = best_model.predict(X_submission)
@@ -264,4 +266,4 @@ final_submission = template_df.merge(
 final_submission['prediction'] = final_submission['prediction'].fillna(0)
 
 # Save the submission file
-final_submission[['cluster_nl', 'date', 'prediction']].to_csv('../data/outputs/final_submission.csv', index=False)
+final_submission[['cluster_nl', 'date', 'prediction']].to_csv('data/outputs/final_submission.csv', index=False)
