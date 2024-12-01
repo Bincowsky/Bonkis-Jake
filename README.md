@@ -35,3 +35,5 @@ If you want to install the libraries from the `requirements.txt` file:
 ```sh
 pip install -r requirements.txt
 ```
+
+Video with the [finalists' presentations](https://drive.google.com/file/d/1vLMugvAMAaC8un7TkRFNr4bUbGPRMexC/view?usp=sharing)
