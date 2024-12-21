@@ -1,7 +1,44 @@
 # Novartis Datathon
+
 Ramon and Adrià participated in the Novartis 2024 dathathon.
 
-During their preparation phase, they produced some code to solve the challenge for 2023, hoping that they can re-use it later.
+## Installation and usage
+
+Create a virtual environment and install all the libraries.
+
+### Windows
+
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+venv\Scripts\activate
+
+# Install requirements
+pip install -r requirements.txt
+
+# Deactivate when finished
+deactivate
+```
+
+### Unix/MacOS
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate 
+
+# Install requirements
+pip install -r requirements.txt
+
+# Deactivate when finished
+deactivate
+```
+
+Then you can try out the notebooks `ramon_exclusive_notebook.ipynb` and `gnn.ipynb` to reproduce our main work. 
 
 ## To do list --> Preparation phase.
 
